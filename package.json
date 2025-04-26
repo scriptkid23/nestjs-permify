@@ -1,11 +1,11 @@
 {
   "name": "nest-permify",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "NestJS client library for Permify server API",
   "author": "Olivier <olivier.taylor.work@gmail.com>",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/types/index.d.ts",
+  "main": "dist/lib/index.js",
+  "module": "dist/lib/index.js",
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/scriptkid23/nestjs-permify.git"
@@ -26,7 +26,10 @@
     }
   ],
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "index.d.ts"
   ],
   "scripts": {
     "prebuild": "rimraf dist",
@@ -52,6 +55,7 @@
   "dependencies": {
     "@nestjs/axios": "^1.0.0",
     "@nestjs/common": "^9.0.0",
+    "nest-permify": "^1.0.2",
     "rxjs": "^7.0.0",
     "uuid": "^11.1.0"
   },
