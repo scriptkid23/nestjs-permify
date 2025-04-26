@@ -6,7 +6,7 @@ import { ExpandPermissionsDto, ExpandPermissionsResponse } from '../lib/dtos/exp
 // Test implementation of the service
 class TestPermissionService {
   async checkAccess(dto: CheckAccessDto): Promise<CheckAccessResponse> {
-    return { isAllowed: true };
+    return { can: 'CHECK_RESULT_ALLOWED', isAllowed: true };
   }
 
   async expandPermissions(dto: ExpandPermissionsDto): Promise<ExpandPermissionsResponse> {

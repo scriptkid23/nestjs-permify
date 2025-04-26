@@ -7,5 +7,9 @@ export class CheckAccessDto {
 }
 
 export class CheckAccessResponse {
-  isAllowed: boolean;
+  can: string;
+  isAllowed?: boolean;
+  metadata?: {
+    check_count: number;
+  };
 }

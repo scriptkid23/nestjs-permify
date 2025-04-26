@@ -8,7 +8,7 @@ export class TenancyService {
 
   async createTenant(tenantId: string): Promise<any> {
     const url = '/v1/tenants';
-    const response = await firstValueFrom(this.httpService.post(url, { name: tenantId }));
+    const response = await firstValueFrom(this.httpService.post(url, { id: tenantId, name: tenantId }));
     return response.data;
   }
 

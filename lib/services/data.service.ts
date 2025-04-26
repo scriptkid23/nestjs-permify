@@ -7,36 +7,51 @@ import { firstValueFrom } from 'rxjs';
 export class DataService {
   constructor(private readonly httpService: HttpService) {}
 
-  async writeData(dto: WriteDataDto): Promise<WriteDataResponse> {
-    const url = `/v1/tenants/${dto.tenant_id}/data/write`;
-    const response = await firstValueFrom(this.httpService.post(url, dto));
-    return response.data as WriteDataResponse;
+  async writeData(dto: WriteDataDto): Promise<any> {
+    const url = `/v1/tenants/${dto.tenant_id}/relationships/write`;
+    const response = await firstValueFrom(this.httpService.post(url, {
+      metadata: {
+        schema_version: "",
+      },
+      tuples: [{
+        entity: {
+          type: dto.entity.split(':')[0],
+          id: dto.entity.split(':')[1]
+        },
+        relation: dto.subject.relation,
+        subject: {
+          type: "user",
+          id: dto.subject.id
+        }
+      }]
+    }));
+    return response.data;
   }
 
   async deleteRelationship(tenantId: string, entity: string, id: string, relation: string): Promise<any> {
-    const url = `/v1/tenants/${tenantId}/data/delete`;
-    const payload = {
+    const url = `/v1/tenants/${tenantId}/relationships/delete`;
+    const response = await firstValueFrom(this.httpService.post(url, {
       tenant_id: tenantId,
-      entity: {
-        type: entity,
-        id: id
-      },
-      relation: relation
-    };
-    const response = await firstValueFrom(this.httpService.post(url, payload));
+      filter: {
+        entity: {
+          type: entity,
+          ids: [id]
+        },
+        relation: relation
+      }
+    }));
     return response.data;
   }
 
   async readRelationships(tenantId: string, entity: string, id: string): Promise<any> {
-    const url = `/v1/tenants/${tenantId}/data/read`;
-    const payload = {
+    const url = `/v1/tenants/${tenantId}/relationships/read`;
+    const response = await firstValueFrom(this.httpService.post(url, {
       tenant_id: tenantId,
       entity: {
         type: entity,
         id: id
       }
-    };
-    const response = await firstValueFrom(this.httpService.post(url, payload));
+    }));
     return response.data;
   }
 

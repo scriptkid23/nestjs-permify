@@ -26,10 +26,13 @@
   "dependencies": {
     "@nestjs/axios": "^1.0.0",
     "@nestjs/common": "^9.0.0",
-    "rxjs": "^7.0.0"
+    "rxjs": "^7.0.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@nestjs/testing": "^9.0.0",
     "@types/jest": "^28.0.0",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.0",
@@ -37,7 +40,6 @@
     "prettier": "^2.0.0",
     "release-it": "^15.0.0",
     "ts-jest": "^28.0.0",
-    "typescript": "^5.0.0",
-    "@nestjs/testing": "^9.0.0"
+    "typescript": "^5.0.0"
   }
 }
