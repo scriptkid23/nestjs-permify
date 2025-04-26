@@ -11,7 +11,7 @@ export class PermissionService {
   async checkAccess(dto: CheckAccessDto): Promise<CheckAccessResponse> {
     const url = `/v1/tenants/${dto.tenant_id}/permissions/check`;
     
-    // Format dữ liệu theo API Permify
+    // Format data according to Permify API
     const requestData = {
       metadata: {
         snap_token: "",
@@ -31,10 +31,10 @@ export class PermissionService {
     
     const response = await firstValueFrom(this.httpService.post(url, requestData));
     
-    // Chuyển đổi phản hồi thành định dạng CheckAccessResponse
+    // Convert the response to CheckAccessResponse format
     const result = response.data as CheckAccessResponse;
     
-    // Thêm trường isAllowed dựa trên giá trị can
+    // Add isAllowed field based on the can value
     result.isAllowed = (result.can === 'CHECK_RESULT_ALLOWED');
     
     return result;

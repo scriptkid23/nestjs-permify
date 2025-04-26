@@ -19,24 +19,24 @@ describe('Real Permify Connection', () => {
   });
 
   it('should connect to the Permify server', async () => {
-    // Mục đích của test này là tạo một request thật tới Permify server
+    // The purpose of this test is to make a real request to the Permify server
     console.log('Sending real request to', process.env.PERMIFY_BASE_URL || 'http://localhost:3476/');
     
     try {
-      // Gửi request đến Permify health check endpoint 
-      // (hoặc bất kỳ endpoint nào khác mà Permify cung cấp)
+      // Send request to Permify health check endpoint
+      // (or any other endpoint that Permify provides)
       const response = await firstValueFrom(httpService.get('/healthz'));
       
       console.log('Received response from Permify:', response.status, response.statusText);
       console.log('Response data:', response.data);
       
-      // Chúng ta không kiểm tra kết quả ở đây vì mục đích chỉ là để xác minh
-      // rằng có request được gửi tới Permify server
+      // We don't check the result here because the purpose is just to verify
+      // that a request is sent to the Permify server
       expect(response.status).toBe(200);
     } catch (error: any) {
-      // Type assertion để xử lý TypeScript error
+      // Type assertion to handle TypeScript error
       console.error('Error connecting to Permify:', error?.message || 'Unknown error');
-      // Không fail test dù có lỗi, vì có thể server không chạy
+      // Don't fail the test even if there's an error, because the server might not be running
       console.log('Tip: Make sure Permify server is running at', process.env.PERMIFY_BASE_URL || 'http://localhost:3476/');
     }
   });
@@ -45,17 +45,17 @@ describe('Real Permify Connection', () => {
     try {
       console.log('\n--- TESTING COMPLETE FLOW ---');
       
-      // 1. Tạo tenant ID ngẫu nhiên để tránh xung đột
+      // 1. Create a random tenant ID to avoid conflicts
       const tenantId = `test-tenant-${uuidv4().substring(0, 8)}`;
       console.log(`Creating tenant: ${tenantId}`);
       
-      // 2. Tạo tenant
+      // 2. Create tenant
       const createTenantResponse = await firstValueFrom(
         httpService.post('/v1/tenants', { name: tenantId })
       );
       console.log('Tenant created:', createTenantResponse?.data);
       
-      // 3. Tạo schema
+      // 3. Create schema
       const schema = `
         entity user {}
         
@@ -77,11 +77,11 @@ describe('Real Permify Connection', () => {
       const schemaVersion = writeSchemaResponse?.data?.schema_version;
       console.log('Schema created: Schema version =', schemaVersion);
       
-      // 4. Tạo dữ liệu - thêm relationships
+      // 4. Create data - add relationships
       const userId = 'user1';
       const documentId = 'doc1';
       
-      // Tạo mối quan hệ: user1 là creator của doc1
+      // Create relationship: user1 is creator of doc1
       const creatorRelationshipResponse = await firstValueFrom(
         httpService.post(`/v1/tenants/${tenantId}/relationships/write`, {
           tenant_id: tenantId,
@@ -105,7 +105,7 @@ describe('Real Permify Connection', () => {
       );
       console.log('Creator relationship created: Success =', !!creatorRelationshipResponse?.data);
       
-      // 5. Check permission: user1 có quyền edit doc1 không?
+      // 5. Check permission: does user1 have edit permission for doc1?
       const checkEditPermissionResponse = await firstValueFrom(
         httpService.post(`/v1/tenants/${tenantId}/permissions/check`, {
           tenant_id: tenantId,
@@ -125,10 +125,10 @@ describe('Real Permify Connection', () => {
       );
       console.log('Check edit permission response:', checkEditPermissionResponse?.data);
       
-      // Kiểm tra kết quả - user1 phải có quyền edit
+      // Check the result - user1 must have edit permission
       expect(checkEditPermissionResponse?.data?.can).toBe(true);
       
-      // 6. Check permission: user1 có quyền view doc1 không?
+      // 6. Check permission: does user1 have view permission for doc1?
       const checkViewPermissionResponse = await firstValueFrom(
         httpService.post(`/v1/tenants/${tenantId}/permissions/check`, {
           tenant_id: tenantId,
@@ -148,10 +148,10 @@ describe('Real Permify Connection', () => {
       );
       console.log('Check view permission response:', checkViewPermissionResponse?.data);
       
-      // Kiểm tra kết quả - user1 phải có quyền view
+      // Check the result - user1 must have view permission
       expect(checkViewPermissionResponse?.data?.can).toBe(true);
       
-      // 7. Check permission: user2 (không có relationship) không được phép edit doc1
+      // 7. Check permission: user2 (no relationship) should not have edit permission for doc1
       const user2Id = 'user2';
       const checkUser2EditPermissionResponse = await firstValueFrom(
         httpService.post(`/v1/tenants/${tenantId}/permissions/check`, {
@@ -172,10 +172,10 @@ describe('Real Permify Connection', () => {
       );
       console.log('Check user2 edit permission response:', checkUser2EditPermissionResponse?.data);
       
-      // Kiểm tra kết quả - user2 không được phép edit
+      // Check the result - user2 should not have edit permission
       expect(checkUser2EditPermissionResponse?.data?.can).toBe(false);
       
-      // 8. Xóa tenant sau khi test xong
+      // 8. Delete tenant after test is complete
       const deleteTenantResponse = await firstValueFrom(
         httpService.delete(`/v1/tenants/${tenantId}`)
       );

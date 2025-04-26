@@ -8,7 +8,7 @@ import { HttpService } from '@nestjs/axios';
 import { of } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 
-// Class test cho TenancyService
+// Test class for TenancyService
 class TestTenancyService extends TenancyService {
   constructor() {
     const mockHttpService = {
@@ -26,7 +26,7 @@ class TestTenancyService extends TenancyService {
   }
 }
 
-// Class test cho SchemaService
+// Test class for SchemaService
 class TestSchemaService extends SchemaService {
   constructor() {
     const mockHttpService = {
@@ -40,7 +40,7 @@ class TestSchemaService extends SchemaService {
   }
 }
 
-// Class test cho PermissionService
+// Test class for PermissionService
 class TestPermissionService extends PermissionService {
   // Keep track of relationships in memory for testing
   private relationships: { [key: string]: string[] } = {};
@@ -91,7 +91,7 @@ class TestPermissionService extends PermissionService {
   }
 }
 
-// Class test cho DataService
+// Test class for DataService
 class TestDataService extends DataService {
   private permissionService: TestPermissionService;
   
@@ -169,15 +169,15 @@ describe('Flow Using Library (Mock Services)', () => {
     try {
       console.log('\n--- TESTING COMPLETE FLOW USING LIBRARY (MOCK) ---');
       
-      // 1. Tạo tenant ID ngẫu nhiên để tránh xung đột
+      // 1. Create a random tenant ID to avoid conflicts
       const tenantId = `test-tenant-${uuidv4().substring(0, 8)}`;
       console.log(`Using tenant: ${tenantId}`);
       
-      // 2. Tạo tenant sử dụng TenancyService
+      // 2. Create tenant using TenancyService
       const tenantCreated = await tenancyService.createTenant(tenantId);
       console.log('Tenant created:', tenantCreated);
       
-      // 3. Tạo schema sử dụng SchemaService
+      // 3. Create schema using SchemaService
       const schema = `
         entity user {}
         
@@ -196,11 +196,11 @@ describe('Flow Using Library (Mock Services)', () => {
       });
       console.log('Schema created:', schemaWritten);
       
-      // 4. Tạo dữ liệu sử dụng DataService
+      // 4. Create data using DataService
       const userId = 'user1';
       const documentId = 'doc1';
       
-      // Tạo mối quan hệ creator
+      // Create creator relationship
       const creatorRelation = await dataService.writeData({
         tenant_id: tenantId,
         action: 'create',
@@ -213,7 +213,7 @@ describe('Flow Using Library (Mock Services)', () => {
       });
       console.log('Creator relationship created:', creatorRelation);
       
-      // 5. Kiểm tra quyền edit sử dụng PermissionService cho user1
+      // 5. Check edit permission using PermissionService for user1
       const editPermissionResult = await permissionService.checkAccess({
         tenant_id: tenantId,
         entity: 'document',
@@ -223,10 +223,10 @@ describe('Flow Using Library (Mock Services)', () => {
       });
       console.log('Check edit permission result:', editPermissionResult);
       
-      // user1 phải có quyền edit
+      // user1 must have edit permission
       expect(editPermissionResult.isAllowed).toBe(true);
       
-      // 6. Kiểm tra quyền view cho user1
+      // 6. Check view permission for user1
       const viewPermissionResult = await permissionService.checkAccess({
         tenant_id: tenantId,
         entity: 'document',
@@ -236,10 +236,10 @@ describe('Flow Using Library (Mock Services)', () => {
       });
       console.log('Check view permission result:', viewPermissionResult);
       
-      // user1 phải có quyền view
+      // user1 must have view permission
       expect(viewPermissionResult.isAllowed).toBe(true);
       
-      // 7. Kiểm tra user2 (không có mối quan hệ) không nên có quyền edit
+      // 7. Check that user2 (no relationship) should not have edit permission
       const user2Id = 'user2';
       const user2EditPermissionResult = await permissionService.checkAccess({
         tenant_id: tenantId,
@@ -250,10 +250,10 @@ describe('Flow Using Library (Mock Services)', () => {
       });
       console.log('Check user2 edit permission result:', user2EditPermissionResult);
       
-      // user2 không nên có quyền edit
+      // user2 should not have edit permission
       expect(user2EditPermissionResult.isAllowed).toBe(false);
       
-      // 8. Xóa tenant sau khi test xong
+      // 8. Delete tenant after test is complete
       const tenantDeleted = await tenancyService.deleteTenant(tenantId);
       console.log('Tenant deleted:', tenantDeleted);
       

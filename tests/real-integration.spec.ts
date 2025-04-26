@@ -54,11 +54,11 @@ describe('Permify API Integration Test', () => {
     try {
       console.log('\n--- TESTING COMPLETE FLOW WITH REAL PERMIFY SERVER ---');
       
-      // 1. Sử dụng tenant t1 có sẵn theo docs
+      // 1. Use existing tenant t1 as per docs
       const tenantId = 't1';
       console.log(`Using default tenant: ${tenantId}`);
       
-      // 2. Tạo schema sử dụng SchemaService
+      // 2. Create schema using SchemaService
       const schema = `
         entity user {}
         
@@ -77,15 +77,15 @@ describe('Permify API Integration Test', () => {
       });
       console.log('Schema created:', schemaWritten);
       
-      // 3. Tạo dữ liệu sử dụng DataService
+      // 3. Create data using DataService
       const userId = 'user1';
       const documentId = 'doc1';
       
-      // Sử dụng cú pháp đúng theo Permify cho entity và relation
+      // Use correct Permify syntax for entity and relation
       console.log('Creating relationship between document and user...');
       
       // Format Permify: entity:id#relation@subject_type:subject_id
-      // VD: document:doc1#creator@user:user1
+      // Example: document:doc1#creator@user:user1
       const tupleString = `document:${documentId}#creator@user:${userId}`;
       console.log('Relationship tuple:', tupleString);
       
@@ -100,7 +100,7 @@ describe('Permify API Integration Test', () => {
       });
       console.log('Creator relationship created:', creatorRelation);
       
-      // 4. Kiểm tra quyền edit sử dụng PermissionService cho user1
+      // 4. Check edit permission using PermissionService for user1
       console.log(`\nChecking if user ${userId} can edit document ${documentId}...`);
       const editPermissionResult = await permissionService.checkAccess({
         tenant_id: tenantId,
@@ -111,10 +111,10 @@ describe('Permify API Integration Test', () => {
       });
       console.log('Check edit permission result:', editPermissionResult);
       
-      // user1 phải có quyền edit vì là creator
+      // user1 must have edit permission because they are the creator
       expect(editPermissionResult.isAllowed).toBe(true);
       
-      // 5. Kiểm tra quyền view cho user1
+      // 5. Check view permission for user1
       console.log(`\nChecking if user ${userId} can view document ${documentId}...`);
       const viewPermissionResult = await permissionService.checkAccess({
         tenant_id: tenantId,
@@ -125,10 +125,10 @@ describe('Permify API Integration Test', () => {
       });
       console.log('Check view permission result:', viewPermissionResult);
       
-      // user1 phải có quyền view vì là creator
+      // user1 must have view permission because they are the creator
       expect(viewPermissionResult.isAllowed).toBe(true);
       
-      // 6. Tạo thêm một user khác và thiết lập quyền viewer
+      // 6. Create another user and set up viewer permission
       const user2Id = 'user2';
       console.log(`\nAdding ${user2Id} as viewer to document ${documentId}...`);
       
@@ -147,7 +147,7 @@ describe('Permify API Integration Test', () => {
       });
       console.log('Viewer relationship created:', viewerRelation);
       
-      // 7. Kiểm tra quyền view cho user2
+      // 7. Check view permission for user2
       console.log(`\nChecking if user ${user2Id} can view document ${documentId}...`);
       const user2ViewPermissionResult = await permissionService.checkAccess({
         tenant_id: tenantId,
@@ -158,10 +158,10 @@ describe('Permify API Integration Test', () => {
       });
       console.log('Check user2 view permission result:', user2ViewPermissionResult);
       
-      // user2 phải có quyền view vì là viewer
+      // user2 must have view permission because they are a viewer
       expect(user2ViewPermissionResult.isAllowed).toBe(true);
       
-      // 8. Kiểm tra user2 không có quyền edit
+      // 8. Check that user2 does not have edit permission
       console.log(`\nChecking if user ${user2Id} can edit document ${documentId}...`);
       const user2EditPermissionResult = await permissionService.checkAccess({
         tenant_id: tenantId,
@@ -172,7 +172,7 @@ describe('Permify API Integration Test', () => {
       });
       console.log('Check user2 edit permission result:', user2EditPermissionResult);
       
-      // user2 không nên có quyền edit vì chỉ là viewer
+      // user2 should not have edit permission because they are only a viewer
       expect(user2EditPermissionResult.isAllowed).toBe(false);
       
       console.log('\n--- COMPLETE FLOW TEST WITH REAL PERMIFY SERVER FINISHED ---\n');
@@ -182,11 +182,11 @@ describe('Permify API Integration Test', () => {
       console.log('Full error details:', error);
       if (error?.response?.status === 404 || error?.code === 'ECONNREFUSED') {
         console.log('Skipping test - Permify server is not running at http://localhost:3476/');
-        console.log('Permify server không chạy ở địa chỉ http://localhost:3476/');
-        console.log('Hãy đảm bảo Permify server đang chạy và thử lại.');
+        console.log('Permify server is not running at http://localhost:3476/');
+        console.log('Please ensure Permify server is running and try again.');
         return;
       }
       throw error;
     }
-  }, 20000); // Tăng timeout lên 20 giây vì gọi API thực có thể mất thời gian
+  }, 20000); // Increase timeout to 20 seconds because real API calls may take time
 }); 

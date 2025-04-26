@@ -7,7 +7,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, of } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 
-// Tạo mock HttpService
+// Create mock HttpService
 class MockHttpService {
   post(url: string, data: any) {
     if (url.includes('/schema/write')) {
@@ -29,14 +29,14 @@ class MockHttpService {
       const subjectType = data.subject.type;
       const subjectId = data.subject.id;
 
-      // Logic kiểm tra quyền dựa trên entity và subject trong mock data
+      // Logic to check permissions based on entity and subject in mock data
       let allowed = false;
       
-      // Mô phỏng logic phân quyền: chủ sở hữu có thể đọc và ghi
+      // Simulate permission logic: owner can read and write
       if (subjectId === 'account1' && permission === 'write') {
         allowed = true;
       }
-      // Chủ sở hữu và editor đều có thể đọc
+      // Both owner and editor can read
       else if ((subjectId === 'account1' || subjectId === 'account2') && permission === 'read') {
         allowed = true;
       }
@@ -62,7 +62,7 @@ class MockHttpService {
   }
 }
 
-// Tạo Mock Services
+// Create Mock Services
 class MockTenancyService {
   async createTenant(tenantId: string): Promise<any> {
     return { success: true };
@@ -140,14 +140,14 @@ describe('Account Schema Test', () => {
   });
 
   it('should test permissions with account entity schema', async () => {
-    // 1. Tạo tenant ID để test
+    // 1. Create tenant ID for testing
     const tenantId = `test-tenant-${uuidv4().substring(0, 8)}`;
     console.log(`Using tenant: ${tenantId}`);
     
-    // 2. Tạo tenant
+    // 2. Create tenant
     await tenancyService.createTenant(tenantId);
     
-    // 3. Viết schema sử dụng account entity thay vì user
+    // 3. Write schema using account entity instead of user
     const schema = `
       entity account {}            
 
@@ -168,7 +168,7 @@ describe('Account Schema Test', () => {
     expect(schemaResult).toBeDefined();
     expect(schemaResult.schema_version).toBe('1.0.0');
     
-    // 4. Tạo mối quan hệ: account1 là owner của document1
+    // 4. Create relationship: account1 is owner of document1
     const ownerRelation = await dataService.writeData({
       tenant_id: tenantId,
       action: 'create',
@@ -176,14 +176,14 @@ describe('Account Schema Test', () => {
       subject: {
         id: 'account1',
         relation: 'owner',
-        type: 'account'  // Chỉ định account type thay vì default user
+        type: 'account'  // Specify account type instead of default user
       }
     });
     
     expect(ownerRelation).toBeDefined();
     expect(ownerRelation.success).toBe(true);
     
-    // 5. Tạo mối quan hệ: account2 là editor của document1
+    // 5. Create relationship: account2 is editor of document1
     const editorRelation = await dataService.writeData({
       tenant_id: tenantId,
       action: 'create',
@@ -198,7 +198,7 @@ describe('Account Schema Test', () => {
     expect(editorRelation).toBeDefined();
     expect(editorRelation.success).toBe(true);
     
-    // 6. Kiểm tra quyền owner (account1) có thể write
+    // 6. Check permissions: owner (account1) can write
     const ownerWriteCheck = await permissionService.checkAccess({
       tenant_id: tenantId,
       entity: 'document',
@@ -211,7 +211,7 @@ describe('Account Schema Test', () => {
     expect(ownerWriteCheck).toBeDefined();
     expect(ownerWriteCheck.isAllowed).toBe(true);
     
-    // 7. Kiểm tra quyền owner (account1) có thể read
+    // 7. Check permissions: owner (account1) can read
     const ownerReadCheck = await permissionService.checkAccess({
       tenant_id: tenantId,
       entity: 'document',
@@ -224,7 +224,7 @@ describe('Account Schema Test', () => {
     expect(ownerReadCheck).toBeDefined();
     expect(ownerReadCheck.isAllowed).toBe(true);
     
-    // 8. Kiểm tra quyền editor (account2) có thể read
+    // 8. Check permissions: editor (account2) can read
     const editorReadCheck = await permissionService.checkAccess({
       tenant_id: tenantId,
       entity: 'document',
@@ -237,7 +237,7 @@ describe('Account Schema Test', () => {
     expect(editorReadCheck).toBeDefined();
     expect(editorReadCheck.isAllowed).toBe(true);
     
-    // 9. Kiểm tra quyền editor (account2) KHÔNG thể write
+    // 9. Check permissions: editor (account2) CANNOT write
     const editorWriteCheck = await permissionService.checkAccess({
       tenant_id: tenantId,
       entity: 'document',
