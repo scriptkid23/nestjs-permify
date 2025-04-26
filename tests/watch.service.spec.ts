@@ -3,14 +3,70 @@ import { WatchService } from '../lib/services/watch.service';
 import { HttpModule, HttpService } from '@nestjs/axios';
 import { firstValueFrom, of } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { WatchChangesDto, WatchPermissionsDto, WatchChangesResponse } from '../lib/dtos/watch.dto';
+
+// Define the interfaces used in the test
+interface DataChange {
+  operation: 'OPERATION_UNSPECIFIED' | 'OPERATION_CREATE' | 'OPERATION_DELETE';
+  tuple?: {
+    entity: {
+      type: string;
+      id: string;
+    };
+    relation: string;
+    subject: {
+      type: string;
+      id: string;
+      relation?: string;
+    };
+  };
+  attribute?: {
+    entity: {
+      type: string;
+      id: string;
+    };
+    attribute: string;
+    value: any;
+  };
+}
+
+interface WatchResponse {
+  result?: {
+    changes: {
+      snap_token: string;
+      data_changes: DataChange[];
+    };
+  };
+  error?: {
+    code: number;
+    message: string;
+    details?: any[];
+  };
+}
 
 // Create a test implementation of the WatchService
 class TestWatchService extends WatchService {
   constructor() {
     // Create a mock HttpService
     const mockHttpService = {
-      get: jest.fn().mockImplementation(() => of({
-        data: { event: 'schema_changed', schema_version: '1.0.1' },
+      post: jest.fn().mockImplementation(() => of({
+        data: {
+          result: {
+            changes: {
+              snap_token: 'abc123',
+              data_changes: [
+                {
+                  operation: 'OPERATION_CREATE',
+                  tuple: {
+                    entity: { type: 'document', id: '123' },
+                    relation: 'owner',
+                    subject: { type: 'user', id: '456' }
+                  }
+                }
+              ]
+            }
+          }
+        },
         status: 200,
       })),
     } as unknown as HttpService;
@@ -19,16 +75,46 @@ class TestWatchService extends WatchService {
   }
 
   // Override methods to provide test implementations
-  watchSchema(tenantId: string) {
-    return of({ event: 'schema_changed', schema_version: '1.0.1' });
+  watchChanges(dto: WatchChangesDto) {
+    const response: WatchChangesResponse = {
+      result: {
+        changes: {
+          snap_token: 'abc123',
+          data_changes: [
+            {
+              operation: 'OPERATION_CREATE',
+              tuple: {
+                entity: { type: 'document', id: '123' },
+                relation: 'owner',
+                subject: { type: 'user', id: '456' }
+              }
+            }
+          ]
+        }
+      }
+    };
+    return of(response);
   }
   
-  watchRelationships(tenantId: string) {
-    return of({ event: 'relationship_changed', entity: 'organization', id: '123' });
-  }
-  
-  async checkWatchEndpoint(tenantId: string, entityType: string): Promise<boolean> {
-    return true;
+  watchPermissionsByDto(dto: WatchPermissionsDto) {
+    const response: WatchChangesResponse = {
+      result: {
+        changes: {
+          snap_token: 'abc123',
+          data_changes: [
+            {
+              operation: 'OPERATION_CREATE',
+              tuple: {
+                entity: { type: dto.entity_type, id: '123' },
+                relation: dto.permission,
+                subject: { type: 'user', id: '456' }
+              }
+            }
+          ]
+        }
+      }
+    };
+    return of(response);
   }
 }
 
@@ -52,59 +138,69 @@ describe('WatchService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('watchSchema', () => {
-    it('should return an observable for schema changes', () => {
+  describe('watchChanges', () => {
+    it('should return an observable for data changes', () => {
       // Arrange
-      const tenantId = 't1';
+      const dto: WatchChangesDto = {
+        tenant_id: 't1'
+      };
 
       // Act
-      const result$ = service.watchSchema(tenantId);
+      const result$ = service.watchChanges(dto);
 
       // Assert
       // Convert Observable to Promise for testing
       return firstValueFrom(result$.pipe(
         map(response => {
           expect(response).toBeDefined();
-          expect(response.event).toBe('schema_changed');
-          expect(response.schema_version).toBe('1.0.1');
+          expect(response.result).toBeDefined();
+          
+          // Safe check that result is defined before accessing properties
+          if (response.result) {
+            expect(response.result.changes).toBeDefined();
+            expect(response.result.changes.snap_token).toBe('abc123');
+            expect(response.result.changes.data_changes).toHaveLength(1);
+            expect(response.result.changes.data_changes[0].operation).toBe('OPERATION_CREATE');
+          }
           return true;
         })
       ));
     });
   });
 
-  describe('watchRelationships', () => {
-    it('should return an observable for relationship changes', () => {
+  describe('watchPermissions', () => {
+    it('should return filtered changes for specific entity type and permission', () => {
       // Arrange
-      const tenantId = 't1';
+      const dto: WatchPermissionsDto = {
+        tenant_id: 't1',
+        entity_type: 'document',
+        permission: 'edit'
+      };
 
       // Act
-      const result$ = service.watchRelationships(tenantId);
+      const result$ = service.watchPermissionsByDto(dto);
 
       // Assert
       // Convert Observable to Promise for testing
       return firstValueFrom(result$.pipe(
         map(response => {
           expect(response).toBeDefined();
-          expect(response.event).toBe('relationship_changed');
-          expect(response.entity).toBe('organization');
+          expect(response.result).toBeDefined();
+          
+          // Safe check that result is defined before accessing properties
+          if (response.result) {
+            expect(response.result.changes).toBeDefined();
+            expect(response.result.changes.data_changes).toHaveLength(1);
+            
+            const change = response.result.changes.data_changes[0];
+            if (change.tuple) {
+              expect(change.tuple.entity.type).toBe(dto.entity_type);
+              expect(change.tuple.relation).toBe(dto.permission);
+            }
+          }
           return true;
         })
       ));
-    });
-  });
-
-  describe('checkWatchEndpoint', () => {
-    it('should return true when the watch endpoint is available', async () => {
-      // Arrange
-      const tenantId = 't1';
-      const entityType = 'schema';
-      
-      // Act
-      const result = await service.checkWatchEndpoint(tenantId, entityType);
-
-      // Assert
-      expect(result).toBe(true);
     });
   });
 }); 

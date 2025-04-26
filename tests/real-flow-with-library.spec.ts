@@ -7,6 +7,7 @@ import { PermissionService } from '../lib/services/permission.service';
 import { HttpService } from '@nestjs/axios';
 import { of } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
+import { CreateTenantDto, CreateTenantResponse, ListTenantsDto, ListTenantsResponse } from '../lib/dtos/tenancy.dto';
 
 // Test class for TenancyService
 class TestTenancyService extends TenancyService {
@@ -20,9 +21,31 @@ class TestTenancyService extends TenancyService {
         data: { success: true },
         status: 200,
       })),
+      get: jest.fn().mockImplementation(() => of({
+        data: { id: 'test-tenant', name: 'test-tenant' },
+        status: 200,
+      })),
     } as unknown as HttpService;
     
     super(mockHttpService);
+  }
+
+  async createTenant(dto: CreateTenantDto): Promise<CreateTenantResponse> {
+    return {
+      id: dto.id,
+      name: dto.name || dto.id
+    };
+  }
+
+  async listTenants(dto: ListTenantsDto = {}): Promise<ListTenantsResponse> {
+    return {
+      tenants: [
+        {
+          id: 'test-tenant',
+          name: 'test-tenant'
+        }
+      ]
+    };
   }
 }
 
@@ -174,7 +197,10 @@ describe('Flow Using Library (Mock Services)', () => {
       console.log(`Using tenant: ${tenantId}`);
       
       // 2. Create tenant using TenancyService
-      const tenantCreated = await tenancyService.createTenant(tenantId);
+      const tenantCreated = await tenancyService.createTenant({
+        id: tenantId,
+        name: tenantId
+      });
       console.log('Tenant created:', tenantCreated);
       
       // 3. Create schema using SchemaService

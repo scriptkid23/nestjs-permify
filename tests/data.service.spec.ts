@@ -1,6 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataService } from '../lib/services/data.service';
 import { WriteDataDto, WriteDataResponse } from '../lib/dtos/write-data.dto';
+import {
+  ReadRelationshipsDto,
+  ReadRelationshipsResponse,
+  DeleteRelationshipDto,
+  DeleteRelationshipResponse
+} from '../lib/dtos/relationship.dto';
 
 // Test implementation of the service
 class TestDataService {
@@ -8,15 +14,23 @@ class TestDataService {
     return { success: true };
   }
 
-  async deleteRelationship(tenantId: string, entity: string, id: string, relation: string): Promise<any> {
+  async deleteRelationship(dto: DeleteRelationshipDto): Promise<DeleteRelationshipResponse> {
     return { success: true };
   }
 
-  async readRelationships(tenantId: string, entity: string, id: string): Promise<any> {
+  async readRelationships(dto: ReadRelationshipsDto): Promise<ReadRelationshipsResponse> {
     return { 
-      relationships: [
-        { relation: 'admin', subject: 'user:123' },
-        { relation: 'member', subject: 'user:456' }
+      tuples: [
+        { 
+          entity: { type: dto.entity, id: dto.id },
+          relation: 'admin',
+          subject: { type: 'user', id: '123' }
+        },
+        { 
+          entity: { type: dto.entity, id: dto.id },
+          relation: 'member',
+          subject: { type: 'user', id: '456' }
+        }
       ]
     };
   }
@@ -65,13 +79,15 @@ describe('DataService', () => {
   describe('deleteRelationship', () => {
     it('should return success=true for a valid delete request', async () => {
       // Arrange
-      const tenantId = 't1';
-      const entity = 'organization';
-      const id = 'org123';
-      const relation = 'admin';
+      const dto: DeleteRelationshipDto = {
+        tenant_id: 't1',
+        entity: 'organization',
+        id: 'org123',
+        relation: 'admin'
+      };
       
       // Act
-      const result = await service.deleteRelationship(tenantId, entity, id, relation);
+      const result = await service.deleteRelationship(dto);
 
       // Assert
       expect(result).toBeDefined();
@@ -82,18 +98,20 @@ describe('DataService', () => {
   describe('readRelationships', () => {
     it('should return a list of relationships for a valid request', async () => {
       // Arrange
-      const tenantId = 't1';
-      const entity = 'organization';
-      const id = 'org123';
+      const dto: ReadRelationshipsDto = {
+        tenant_id: 't1',
+        entity: 'organization',
+        id: 'org123'
+      };
       
       // Act
-      const result = await service.readRelationships(tenantId, entity, id);
+      const result = await service.readRelationships(dto);
 
       // Assert
       expect(result).toBeDefined();
-      expect(result.relationships).toBeDefined();
-      expect(Array.isArray(result.relationships)).toBe(true);
-      expect(result.relationships.length).toBe(2);
+      expect(result.tuples).toBeDefined();
+      expect(Array.isArray(result.tuples)).toBe(true);
+      expect(result.tuples.length).toBe(2);
     });
   });
 });
