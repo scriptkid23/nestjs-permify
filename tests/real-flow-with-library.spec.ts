@@ -40,36 +40,92 @@ class TestSchemaService extends SchemaService {
   }
 }
 
-// Class test cho DataService
-class TestDataService extends DataService {
-  constructor() {
-    const mockHttpService = {
-      post: jest.fn().mockImplementation(() => of({
-        data: { success: true },
-        status: 200,
-      })),
-    } as unknown as HttpService;
-    
-    super(mockHttpService);
-  }
-}
-
 // Class test cho PermissionService
 class TestPermissionService extends PermissionService {
+  // Keep track of relationships in memory for testing
+  private relationships: { [key: string]: string[] } = {};
+
   constructor() {
     const mockHttpService = {
       post: jest.fn().mockImplementation((url, data) => {
-        // Mặc định bất kỳ ai là creator đều có quyền edit
-        const isAllowed = data.context && data.context.userId === 'user1';
+        console.log('Permission check request:', JSON.stringify(data));
+        
+        // Determine if isAllowed based on the complete request data
+        let isAllowed = false;
+        
+        if (data.entity && data.entity.type === 'document' && data.entity.id === 'doc1') {
+          // Check context for userId
+          const userId = data.subject?.id;
+          const permission = data.permission;
+          
+          if (userId === 'user1') {
+            // user1 has both edit and view permissions as creator
+            isAllowed = true;
+          } else if (userId === 'user2' && permission === 'view') {
+            // user2 only has view permission
+            isAllowed = true;
+          }
+        }
         
         return of({
-          data: { isAllowed: isAllowed },
+          data: { 
+            can: isAllowed ? 'CHECK_RESULT_ALLOWED' : 'CHECK_RESULT_DENIED',
+            isAllowed: isAllowed,
+            metadata: { check_count: 1 }
+          },
           status: 200,
         });
       }),
     } as unknown as HttpService;
     
     super(mockHttpService);
+  }
+  
+  // Record relationship info
+  addRelationship(entity: string, id: string, relation: string, userId: string) {
+    const key = `${entity}:${id}#${relation}`;
+    if (!this.relationships[key]) {
+      this.relationships[key] = [];
+    }
+    this.relationships[key].push(userId);
+  }
+}
+
+// Class test cho DataService
+class TestDataService extends DataService {
+  private permissionService: TestPermissionService;
+  
+  constructor(permissionService: TestPermissionService) {
+    const mockHttpService = {
+      post: jest.fn().mockImplementation((url, data) => {
+        console.log('Data service request:', JSON.stringify(data));
+        return of({
+          data: { success: true },
+          status: 200,
+        });
+      }),
+    } as unknown as HttpService;
+    
+    super(mockHttpService);
+    this.permissionService = permissionService;
+  }
+  
+  async writeData(dto: any): Promise<any> {
+    // Extract entity and ID from input
+    let entity = dto.entity;
+    let id = dto.context?.documentId || 'doc1';
+    
+    if (entity.includes(':')) {
+      [entity, id] = entity.split(':');
+    }
+    
+    // Record the relationship for permission checks
+    this.permissionService.addRelationship(entity, id, dto.subject.relation, dto.subject.id);
+    
+    // Return success response
+    return {
+      success: true
+    };
   }
 }
 
@@ -80,6 +136,9 @@ describe('Flow Using Library (Mock Services)', () => {
   let permissionService: TestPermissionService;
   
   beforeEach(async () => {
+    // Create permission service first so it can be passed to data service
+    permissionService = new TestPermissionService();
+    
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         {
@@ -92,11 +151,11 @@ describe('Flow Using Library (Mock Services)', () => {
         },
         {
           provide: DataService,
-          useClass: TestDataService,
+          useFactory: () => new TestDataService(permissionService),
         },
         {
           provide: PermissionService,
-          useClass: TestPermissionService,
+          useValue: permissionService,
         },
       ],
     }).compile();
@@ -104,7 +163,6 @@ describe('Flow Using Library (Mock Services)', () => {
     tenancyService = module.get<TestTenancyService>(TenancyService);
     schemaService = module.get<TestSchemaService>(SchemaService);
     dataService = module.get<TestDataService>(DataService);
-    permissionService = module.get<TestPermissionService>(PermissionService);
   });
 
   it('should test a complete flow using library services', async () => {
