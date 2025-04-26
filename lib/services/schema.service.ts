@@ -5,11 +5,11 @@ import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class SchemaService {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly httpService: HttpService) {}
 
   async writeSchema(dto: WriteSchemaDto): Promise<WriteSchemaResponse> {
     const url = `/v1/tenants/${dto.tenant_id}/schemas/write`;
-    const response = await firstValueFrom(this.http.post(url, dto));
+    const response = await firstValueFrom(this.httpService.post(url, dto));
     return response.data as WriteSchemaResponse;
   }
 

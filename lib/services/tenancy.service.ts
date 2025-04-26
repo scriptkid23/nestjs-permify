@@ -4,17 +4,17 @@ import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class TenancyService {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly httpService: HttpService) {}
 
   async createTenant(tenantId: string): Promise<any> {
     const url = '/v1/tenants';
-    const response = await firstValueFrom(this.http.post(url, { name: tenantId }));
+    const response = await firstValueFrom(this.httpService.post(url, { name: tenantId }));
     return response.data;
   }
 
   async deleteTenant(tenantId: string): Promise<any> {
     const url = `/v1/tenants/${tenantId}`;
-    const response = await firstValueFrom(this.http.delete(url));
+    const response = await firstValueFrom(this.httpService.delete(url));
     return response.data;
   }
 

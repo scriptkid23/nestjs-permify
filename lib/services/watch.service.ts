@@ -4,12 +4,12 @@ import { firstValueFrom, Observable } from 'rxjs';
 
 @Injectable()
 export class WatchService {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly httpService: HttpService) {}
 
   watchSchema(tenantId: string): Observable<any> {
     // Using the stream endpoint for watching schema changes
     const url = `/v1/tenants/${tenantId}/watch/schema`;
-    return this.http.get(url, { 
+    return this.httpService.get(url, { 
       responseType: 'stream',
       headers: {
         'Accept': 'text/event-stream'
@@ -23,7 +23,7 @@ export class WatchService {
   watchRelationships(tenantId: string): Observable<any> {
     // Using the stream endpoint for watching relationship changes
     const url = `/v1/tenants/${tenantId}/watch/relationships`;
-    return this.http.get(url, { 
+    return this.httpService.get(url, { 
       responseType: 'stream',
       headers: {
         'Accept': 'text/event-stream'
@@ -38,7 +38,7 @@ export class WatchService {
   async checkWatchEndpoint(tenantId: string, entityType: string): Promise<boolean> {
     try {
       const url = `/v1/tenants/${tenantId}/watch/${entityType}/status`;
-      const response = await firstValueFrom(this.http.get(url));
+      const response = await firstValueFrom(this.httpService.get(url));
       return response.status === 200;
     } catch (error) {
       return false;

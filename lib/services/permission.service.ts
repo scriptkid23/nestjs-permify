@@ -6,17 +6,17 @@ import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class PermissionService {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly httpService: HttpService) {}
 
   async checkAccess(dto: CheckAccessDto): Promise<CheckAccessResponse> {
     const url = `/v1/tenants/${dto.tenant_id}/check`;
-    const response = await firstValueFrom(this.http.post(url, dto));
+    const response = await firstValueFrom(this.httpService.post(url, dto));
     return response.data as CheckAccessResponse;
   }
 
   async expandPermissions(dto: ExpandPermissionsDto): Promise<ExpandPermissionsResponse> {
     const url = `/v1/tenants/${dto.tenant_id}/expand`;
-    const response = await firstValueFrom(this.http.post(url, dto));
+    const response = await firstValueFrom(this.httpService.post(url, dto));
     return response.data as ExpandPermissionsResponse;
   }
 

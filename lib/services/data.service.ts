@@ -5,11 +5,11 @@ import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class DataService {
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly httpService: HttpService) {}
 
   async writeData(dto: WriteDataDto): Promise<WriteDataResponse> {
     const url = `/v1/tenants/${dto.tenant_id}/data/write`;
-    const response = await firstValueFrom(this.http.post(url, dto));
+    const response = await firstValueFrom(this.httpService.post(url, dto));
     return response.data as WriteDataResponse;
   }
 
@@ -23,7 +23,7 @@ export class DataService {
       },
       relation: relation
     };
-    const response = await firstValueFrom(this.http.post(url, payload));
+    const response = await firstValueFrom(this.httpService.post(url, payload));
     return response.data;
   }
 
@@ -36,7 +36,7 @@ export class DataService {
         id: id
       }
     };
-    const response = await firstValueFrom(this.http.post(url, payload));
+    const response = await firstValueFrom(this.httpService.post(url, payload));
     return response.data;
   }
 

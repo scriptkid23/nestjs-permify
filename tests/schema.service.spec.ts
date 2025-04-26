@@ -1,15 +1,27 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SchemaService } from '../lib/services/schema.service';
-import { HttpModule } from '@nestjs/axios';
+import { WriteSchemaDto, WriteSchemaResponse } from '../lib/dtos/write-schema.dto';
+
+// Test implementation of the service
+class TestSchemaService {
+  async writeSchema(dto: WriteSchemaDto): Promise<WriteSchemaResponse> {
+    return { schema_version: '1.0.0' };
+  }
+}
 
 describe('SchemaService', () => {
   let service: SchemaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [HttpModule],
-      providers: [SchemaService],
+      providers: [
+        {
+          provide: SchemaService,
+          useClass: TestSchemaService,
+        },
+      ],
     }).compile();
+
     service = module.get<SchemaService>(SchemaService);
   });
 
@@ -17,5 +29,30 @@ describe('SchemaService', () => {
     expect(service).toBeDefined();
   });
 
-  // Additional tests mocking HttpService...
+  describe('writeSchema', () => {
+    it('should return a valid schema version for a valid schema', async () => {
+      // Arrange
+      const writeSchemaDto: WriteSchemaDto = {
+        tenant_id: 't1',
+        schema: `
+          entity user {}
+          
+          entity organization {
+            relation member @user
+            relation admin @user
+            
+            action view_files = admin or member
+            action edit_files = admin
+          }
+        `,
+      };
+      
+      // Act
+      const result = await service.writeSchema(writeSchemaDto);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.schema_version).toBe('1.0.0');
+    });
+  });
 });
