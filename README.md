@@ -25,6 +25,20 @@ A NestJS client library for interacting with the [Permify](https://permify.co) a
 npm install nestjs-permify
 ```
 
+### Peer Dependencies
+
+This package has the following peer dependencies:
+
+```json
+{
+  "@nestjs/axios": "^1.0.0 || ^2.0.0 || ^3.0.0 || ^4.0.0",
+  "@nestjs/common": "^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0",
+  "rxjs": "^7.0.0 || ^8.0.0"
+}
+```
+
+Ensure these packages are installed in your project.
+
 ## Quick Start
 
 ### Module Registration
@@ -151,7 +165,6 @@ export class DocumentRelationService {
   }
 }
 ```
-
 ## Available Services
 
 The library provides the following services:
@@ -181,3 +194,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - [Permify](https://permify.co) - For their excellent authorization system
 - [NestJS](https://nestjs.com) - For the progressive Node.js framework
+

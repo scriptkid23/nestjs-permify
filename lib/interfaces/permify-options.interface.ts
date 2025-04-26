@@ -1,4 +1,5 @@
 export interface PermifyModuleOptions {
   baseUrl: string;
-  apiKey: string;
+  apiKey?: string;
+  skipHealthCheck?: boolean;
 }
