@@ -70,11 +70,38 @@ export class PermifyModule {
    * @returns DynamicModule configuration
    */
   static forRootAsync(options: any): DynamicModule {
+    // Create service factory providers
+    const serviceProviders = this.createServiceProviders();
+
     return {
       module: PermifyModule,
       imports: [
         ...(options.imports || []),
-        HttpModule,
+        HttpModule.registerAsync({
+          imports: options.imports || [],
+          inject: options.inject || [],
+          useFactory: async (...args: any[]) => {
+            const moduleOptions = await options.useFactory(...args);
+            
+            // Normalize URL to prevent double slashes
+            if (moduleOptions.baseUrl && moduleOptions.baseUrl.endsWith('/')) {
+              moduleOptions.baseUrl = moduleOptions.baseUrl.slice(0, -1);
+            }
+            
+            this.logger.log(`Configuring Permify with baseUrl: ${moduleOptions.baseUrl}`);
+            
+            // Configure HTTP headers with optional API key
+            const httpConfig: any = {
+              baseURL: moduleOptions.baseUrl,
+            };
+            
+            if (moduleOptions.apiKey) {
+              httpConfig.headers = { Authorization: `Bearer ${moduleOptions.apiKey}` };
+            }
+            
+            return httpConfig;
+          },
+        }),
       ],
       providers: [
         {
@@ -92,7 +119,7 @@ export class PermifyModule {
           inject: options.inject || [],
         },
         this.createAsyncHealthCheckProvider(),
-        ...this.createServiceProviders(),
+        ...serviceProviders,
       ],
       exports: this.services,
     };
