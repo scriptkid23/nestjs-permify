@@ -1,0 +1,13 @@
+{
+  "git": {
+    "tagName": "v${version}"
+  },
+  "npm": {
+    "publish": true,
+    "file": "package.json",
+    "tempTag": false
+  },
+  "hooks": {
+    "before:init": ["npm run lint", "npm test"]
+  }
+}

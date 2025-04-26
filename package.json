@@ -1,0 +1,43 @@
+{
+  "name": "nestjs-permify",
+  "version": "1.0.0",
+  "description": "NestJS client library for Permify server API",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest --coverage",
+    "lint": "eslint \"{lib,tests}/**/*.ts\" --fix",
+    "prepublishOnly": "npm run build",
+    "publish:npm": "npm publish --access public",
+    "release": "release-it"
+  },
+  "keywords": [
+    "nestjs",
+    "permify",
+    "authorization",
+    "client"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@nestjs/axios": "^1.0.0",
+    "@nestjs/common": "^9.0.0",
+    "rxjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^28.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^28.0.0",
+    "prettier": "^2.0.0",
+    "release-it": "^15.0.0",
+    "ts-jest": "^28.0.0",
+    "typescript": "^5.0.0",
+    "@nestjs/testing": "^9.0.0"
+  }
+}
