@@ -24,7 +24,7 @@ export class PermissionService {
       },
       permission: dto.permission,
       subject: {
-        type: "user",
+        type: dto.subjectType || "user",
         id: dto.context?.userId || "",
       }
     };

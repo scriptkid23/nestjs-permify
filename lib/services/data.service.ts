@@ -20,7 +20,7 @@ export class DataService {
         },
         relation: dto.subject.relation,
         subject: {
-          type: "user",
+          type: dto.subject.type || "user",
           id: dto.subject.id
         }
       }]

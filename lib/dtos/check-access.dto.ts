@@ -3,6 +3,7 @@ export class CheckAccessDto {
   entity: string;
   id: string;
   permission: string;
+  subjectType?: string;
   context?: Record<string, any>;
 }
 
