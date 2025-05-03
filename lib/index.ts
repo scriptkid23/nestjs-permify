@@ -10,3 +10,9 @@ export * from './dtos/expand-permissions.dto';
 export * from './dtos/write-schema.dto';
 export * from './dtos/write-data.dto';
 export * from './interfaces/permify-options.interface';
+
+// Export new permission interceptor components
+export * from './interceptors/permission.interceptor';
+export * from './interceptors/permission-interceptor.module';
+export * from './decorators/require-permission.decorator';
+export * from './interfaces/permission-metadata.interface';

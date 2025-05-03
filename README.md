@@ -19,6 +19,7 @@ A comprehensive NestJS client library for integrating with [Permify](https://per
   - Real-time permission watching
   - Resource and subject lookup
 - Automatic health checking of the Permify service
+- Permission interceptor for simplified access control
 
 ## Installation
 
@@ -415,6 +416,551 @@ If you encounter the error "Cannot read properties of undefined (reading 'post')
 4. **Circular dependencies**
 
    If you have circular dependencies between your modules, it can cause injection issues. Review your module structure to ensure there are no circular dependencies.
+
+## Permission Interceptor
+
+The Permission Interceptor simplifies access control in NestJS applications by automatically checking permissions based on decorators.
+
+### Setup
+
+```typescript
+import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { PermifyModule, PermissionInterceptorModule, PermissionInterceptor } from 'nestjs-permify';
+
+@Module({
+  imports: [
+    PermifyModule.forRoot({
+      baseUrl: 'http://localhost:3476',
+      // apiKey: 'your-api-key', // Optional
+    }),
+    PermissionInterceptorModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PermissionInterceptor,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+### Usage
+
+#### Method 1: Per-Route Permissions
+
+```typescript
+import { Controller, Get, Param } from '@nestjs/common';
+import { RequirePermission } from 'nestjs-permify';
+
+@Controller('documents')
+export class DocumentController {
+  @RequirePermission({
+    entity: 'document',
+    idParam: 'id',
+    permission: 'read',
+    contextFields: ['organization'] // Extract from request
+  })
+  @Get(':id')
+  getDocument(@Param('id') id: string) {
+    // Only called if user has read permission on the document
+    return this.documentService.findById(id);
+  }
+}
+```
+
+#### Method 2: Controller-Level Permissions
+
+```typescript
+import { Controller, Get, Param } from '@nestjs/common';
+import { RequirePermission } from 'nestjs-permify';
+
+@Controller('documents')
+@RequirePermission({
+  entity: 'document',
+  permission: 'read',
+})
+export class DocumentController {
+  @Get(':id')
+  getDocument(@Param('id') id: string) {
+    // Checks permissions using controller metadata
+    return this.documentService.findById(id);
+  }
+
+  // Override controller metadata
+  @RequirePermission({
+    entity: 'document',
+    permission: 'write',
+  })
+  @Post(':id')
+  updateDocument(@Param('id') id: string, @Body() data: any) {
+    // Checks write permission
+    return this.documentService.update(id, data);
+  }
+}
+```
+
+### Metadata Options
+
+```typescript
+export interface PermissionMetadata {
+  entity: string;           // Entity type (e.g., 'document', 'project')
+  idParam?: string;         // Route parameter name for entity ID (default: 'id')
+  permission: string;       // Permission to check (e.g., 'read', 'write')
+  subjectType?: string;     // Subject type (default: 'user')
+  contextFields?: string[]; // Fields to include in context from request
+  tenant?: string;          // Tenant ID or parameter name (default: from req.tenant)
+}
+```
+
+### Error Handling
+
+The interceptor automatically throws a `ForbiddenException` if the permission check fails.
+
+## Complete Example: From Schema Design to Authorization
+
+This example demonstrates a complete integration of Permify in a document management system:
+
+### 1. Define Authorization Schema
+
+First, design your permission model by defining entities, relations, and permissions:
+
+```typescript
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { SchemaService } from 'nestjs-permify';
+
+@Injectable()
+export class AuthorizationSchemaInitializer implements OnModuleInit {
+  constructor(private readonly schemaService: SchemaService) {}
+
+  async onModuleInit() {
+    // Define the permission schema for the organization
+    const schema = `
+      // Users within the system
+      entity user {}
+
+      // Organizations represent top-level containers
+      entity organization {
+        // Relations define connections to users
+        relation admin @user
+        relation member @user
+
+        // Permissions define what users can do
+        permission view = admin or member
+        permission edit = admin
+        permission manage_members = admin
+      }
+
+      // Projects belong to organizations
+      entity project {
+        relation owner @user
+        relation editor @user
+        relation viewer @user
+        relation parent @organization
+
+        // Direct permissions
+        permission view = owner or editor or viewer
+        permission edit = owner or editor
+        permission delete = owner
+
+        // Organizational permissions (inheritance)
+        permission admin = parent.admin
+      }
+
+      // Documents belong to projects
+      entity document {
+        relation creator @user
+        relation collaborator @user
+        relation reviewer @user
+        relation parent @project
+
+        // Direct permissions
+        permission view = creator or collaborator or reviewer or parent.viewer
+        permission edit = creator or collaborator or parent.editor
+        permission delete = creator or parent.owner
+        permission comment = view
+
+        // Inherit project permissions for admins
+        permission admin = parent.admin
+      }
+    `;
+
+    // For each organization, create a tenant and schema
+    const organizations = await this.getAllOrganizations();
+    
+    for (const org of organizations) {
+      // Create a tenant for each organization
+      await this.schemaService.writeSchema({
+        tenant_id: org.id,
+        schema,
+      });
+      
+      console.log(`Schema initialized for organization: ${org.name} (${org.id})`);
+    }
+  }
+
+  // Mock method to get organizations (in a real app, this would come from your database)
+  private async getAllOrganizations() {
+    return [
+      { id: 'org-1', name: 'Acme Inc.' },
+      { id: 'org-2', name: 'TechCorp' },
+    ];
+  }
+}
+```
+
+### 2. Create Relationships During Entity Creation
+
+Create relationships in Permify when entities are created in your application:
+
+```typescript
+// document.service.ts
+import { Injectable } from '@nestjs/common';
+import { DataService } from 'nestjs-permify';
+
+@Injectable()
+export class DocumentService {
+  constructor(private readonly dataService: DataService) {}
+
+  async createDocument(
+    organizationId: string,
+    projectId: string,
+    userId: string,
+    documentData: any,
+  ) {
+    // First, create the document in your database
+    const document = await this.documentRepository.create({
+      ...documentData,
+      projectId,
+      createdBy: userId,
+    });
+
+    // Then, create relationships in Permify
+    await this.dataService.writeData({
+      tenant_id: organizationId,
+      entity: `document:${document.id}`,
+      subject: {
+        id: userId,
+        relation: 'creator',
+      },
+    });
+
+    // Also establish the parent relationship to the project
+    await this.dataService.writeData({
+      tenant_id: organizationId,
+      entity: `document:${document.id}`,
+      subject: {
+        id: projectId,
+        relation: 'parent',
+      },
+    });
+
+    return document;
+  }
+
+  async addCollaborator(organizationId: string, documentId: string, userId: string) {
+    // Add the user as a collaborator in your database
+    await this.documentCollaboratorRepository.create({
+      documentId,
+      userId,
+      role: 'collaborator',
+    });
+
+    // Create the relationship in Permify
+    await this.dataService.writeData({
+      tenant_id: organizationId,
+      entity: `document:${documentId}`,
+      subject: {
+        id: userId,
+        relation: 'collaborator',
+      },
+    });
+  }
+}
+```
+
+### 3. Set Up Controller with Permission Interceptor
+
+```typescript
+// document.module.ts
+import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { 
+  PermifyModule, 
+  PermissionInterceptorModule, 
+  PermissionInterceptor 
+} from 'nestjs-permify';
+import { DocumentController } from './document.controller';
+import { DocumentService } from './document.service';
+
+@Module({
+  imports: [
+    PermifyModule.forRoot({
+      baseUrl: process.env.PERMIFY_URL || 'http://localhost:3476',
+    }),
+    PermissionInterceptorModule,
+  ],
+  controllers: [DocumentController],
+  providers: [
+    DocumentService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PermissionInterceptor,
+    },
+  ],
+})
+export class DocumentModule {}
+```
+
+### 4. Implement Controller with Permission Checks
+
+```typescript
+// document.controller.ts
+import { 
+  Controller, Get, Post, Put, Delete, 
+  Param, Body, Req, UseGuards 
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { RequirePermission } from 'nestjs-permify';
+import { DocumentService } from './document.service';
+
+@Controller('organizations/:orgId/projects/:projectId/documents')
+@UseGuards(AuthGuard('jwt'))
+export class DocumentController {
+  constructor(private readonly documentService: DocumentService) {}
+
+  @Post()
+  async createDocument(
+    @Req() req,
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Body() documentData: any,
+  ) {
+    // When creating a document, no permission check needed
+    // The current user becomes the creator automatically
+    return this.documentService.createDocument(
+      orgId,
+      projectId,
+      req.user.id,
+      documentData,
+    );
+  }
+
+  @Get()
+  @RequirePermission({
+    entity: 'project',
+    idParam: 'projectId',
+    permission: 'view',
+    tenant: 'orgId',
+  })
+  async getAllDocuments(
+    @Param('projectId') projectId: string
+  ) {
+    // This will only execute if user has 'view' permission on the project
+    return this.documentService.findAll(projectId);
+  }
+
+  @Get(':documentId')
+  @RequirePermission({
+    entity: 'document',
+    idParam: 'documentId',
+    permission: 'view',
+    tenant: 'orgId',
+    contextFields: ['user.organizationRole'],
+  })
+  async getDocument(
+    @Param('documentId') documentId: string
+  ) {
+    // This will only execute if user has 'view' permission on the document
+    return this.documentService.findById(documentId);
+  }
+
+  @Put(':documentId')
+  @RequirePermission({
+    entity: 'document',
+    idParam: 'documentId',
+    permission: 'edit',
+    tenant: 'orgId',
+  })
+  async updateDocument(
+    @Param('documentId') documentId: string,
+    @Body() updateData: any,
+  ) {
+    // This will only execute if user has 'edit' permission on the document
+    return this.documentService.update(documentId, updateData);
+  }
+
+  @Delete(':documentId')
+  @RequirePermission({
+    entity: 'document',
+    idParam: 'documentId',
+    permission: 'delete',
+    tenant: 'orgId',
+  })
+  async deleteDocument(
+    @Param('documentId') documentId: string,
+  ) {
+    // This will only execute if user has 'delete' permission on the document
+    return this.documentService.delete(documentId);
+  }
+
+  @Post(':documentId/collaborators')
+  @RequirePermission({
+    entity: 'document',
+    idParam: 'documentId',
+    permission: 'edit',
+    tenant: 'orgId',
+  })
+  async addCollaborator(
+    @Param('orgId') orgId: string,
+    @Param('documentId') documentId: string,
+    @Body('userId') userId: string,
+  ) {
+    // Only users with 'edit' permission can add collaborators
+    return this.documentService.addCollaborator(orgId, documentId, userId);
+  }
+}
+```
+
+### 5. Implement Front-End Permission Checking
+
+In your front-end application, you can use the permission checking services to hide or show UI elements:
+
+```typescript
+// Angular example service
+@Injectable({
+  providedIn: 'root'
+})
+export class PermissionService {
+  constructor(private http: HttpClient) {}
+  
+  async canPerformAction(
+    orgId: string,
+    entityType: string,
+    entityId: string,
+    permission: string
+  ): Promise<boolean> {
+    try {
+      const response = await this.http.post<{isAllowed: boolean}>(
+        `/api/permissions/check`,
+        {
+          orgId,
+          entityType,
+          entityId,
+          permission
+        }
+      ).toPromise();
+      
+      return response.isAllowed;
+    } catch (error) {
+      console.error('Permission check failed', error);
+      return false;
+    }
+  }
+}
+
+// Usage in a component
+@Component({
+  selector: 'app-document-detail',
+  template: `
+    <div class="document-container">
+      <h1>{{document.title}}</h1>
+      <div class="content">{{document.content}}</div>
+      
+      <div class="actions">
+        <button *ngIf="canEdit" (click)="editDocument()">Edit</button>
+        <button *ngIf="canDelete" (click)="deleteDocument()">Delete</button>
+        <button *ngIf="canAddCollaborators" (click)="showCollaboratorModal()">
+          Add Collaborator
+        </button>
+      </div>
+    </div>
+  `
+})
+export class DocumentDetailComponent implements OnInit {
+  document: any;
+  canEdit = false;
+  canDelete = false;
+  canAddCollaborators = false;
+  
+  constructor(
+    private documentService: DocumentService,
+    private permissionService: PermissionService,
+    private route: ActivatedRoute
+  ) {}
+  
+  async ngOnInit() {
+    const orgId = this.route.snapshot.paramMap.get('orgId');
+    const documentId = this.route.snapshot.paramMap.get('documentId');
+    
+    this.document = await this.documentService.getDocument(orgId, documentId);
+    
+    // Check permissions to update UI
+    this.canEdit = await this.permissionService.canPerformAction(
+      orgId, 'document', documentId, 'edit'
+    );
+    
+    this.canDelete = await this.permissionService.canPerformAction(
+      orgId, 'document', documentId, 'delete'
+    );
+    
+    this.canAddCollaborators = await this.permissionService.canPerformAction(
+      orgId, 'document', documentId, 'edit'
+    );
+  }
+}
+```
+
+### 6. Create Backend Permission Endpoint
+
+For front-end permission checking, create an endpoint in your NestJS application:
+
+```typescript
+// permission.controller.ts
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { PermissionService } from 'nestjs-permify';
+
+@Controller('permissions')
+@UseGuards(AuthGuard('jwt'))
+export class PermissionController {
+  constructor(private readonly permissionService: PermissionService) {}
+
+  @Post('check')
+  async checkPermission(
+    @Req() req,
+    @Body() body: {
+      orgId: string;
+      entityType: string;
+      entityId: string;
+      permission: string;
+    }
+  ) {
+    const result = await this.permissionService.checkAccess({
+      tenant_id: body.orgId,
+      entity: body.entityType,
+      id: body.entityId,
+      permission: body.permission,
+      subjectType: 'user',
+      context: {
+        userId: req.user.id,
+        // Include other context data as needed
+        organizationRole: req.user.roles?.[body.orgId],
+      },
+    });
+
+    return { isAllowed: result.isAllowed };
+  }
+}
+```
+
+This complete example demonstrates the full workflow:
+1. Designing the authorization schema with entity relationships and permissions
+2. Creating relationships during entity lifecycle in your application
+3. Implementing permission checks using the interceptor
+4. Controlling UI elements based on permissions
+5. Setting up a permission checking endpoint for frontend applications
 
 ## Contributing
 
