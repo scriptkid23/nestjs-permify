@@ -1,6 +1,6 @@
 {
   "name": "nestjs-permify",
-  "version": "1.0.0",
+  "version": "5.0.0",
   "description": "NestJS client library for Permify server API",
   "author": "Olivier <olivier.taylor.work@gmail.com>",
   "main": "dist/lib/index.js",
